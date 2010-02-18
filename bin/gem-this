@@ -6,15 +6,17 @@ args = ARGV.dup
 
 if args.first =~ /-?-h/
   puts GemThis::SUMMARY
-  puts "Usage: #{__FILE__} [-d -h] [gem name]"
+  puts "Usage: #{__FILE__} [-d -h -spec] [gem name]"
   puts "If a gem name is not given, the name of the current directory will be used as the gem"
-  puts "-h    help, prints out this message."
-  puts "-d    #{GemThis::DEBUG_MESSAGE}"
+  puts "-h            help, prints out this message."
+  puts "-d            #{GemThis::DEBUG_MESSAGE}"
+  puts "-g, --spec    Generate a static .gemspec file."
   exit
 end
 
 debug = args.delete("-d")
+spec = args.delete("--spec") || args.delete("-g")
 
-GemThis.new(args.first || File.basename(Dir.pwd), :debug => debug).create_rakefile
+GemThis.new(args.first || File.basename(Dir.pwd), :debug => debug, :spec => spec).create_rakefile
 
 exit

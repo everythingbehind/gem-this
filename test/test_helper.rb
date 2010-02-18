@@ -39,10 +39,15 @@ class GemBuilder
     File.join(@gem_path, "pkg", @name + "-0.1.0.gem")
   end
 
-  def build
+  def path_to_static_gemspec
+    File.join(@gem_path, @name + ".gemspec")
+  end
+
+  def build(options={})
     result = nil
     FileUtils.cd(@gem_path) do
-      result = GemThis.new(@name, :debug => false, :silent => true).create_rakefile
+      options = {:debug => false, :silent => true}.merge(options)
+      result = GemThis.new(@name, options).create_rakefile
       `rake package 2>&1`
     end
     result
@@ -86,6 +91,10 @@ class Test::Unit::TestCase
     end
   end
 
+  def static_gemspec_exists?
+    File.exist?(@gem.path_to_static_gemspec)
+  end
+
   def in_gem(&block)
     result = nil
     FileUtils.cd(@gem.gem_path) do
@@ -99,8 +108,8 @@ class Test::Unit::TestCase
     @gem = GemBuilder.new(name, &block)
   end
 
-  def build_gem(name="test_gem", &block)
-    create_gem(name, &block).build
+  def build_gem(name="test_gem", options={}, &block)
+    create_gem(name, &block).build(options)
   end
 
   def gem_spec

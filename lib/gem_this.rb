@@ -10,9 +10,10 @@ class GemThis
 
   def initialize(name, options={})
     @name = name
-    options = {:default => false, :silent => false}.update(options)
+    options = {:default => false, :silent => false, :spec => false}.update(options)
     @debug = options[:debug]
     @silent = options[:silent]
+    @spec = options[:spec]
   end
 
   def create_rakefile
@@ -101,6 +102,10 @@ class GemThis
 
   def using_git?
     File.exist?(".git")
+  end
+
+  def create_spec?
+    @spec
   end
 
   def default_tasks

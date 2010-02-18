@@ -20,6 +20,22 @@ class GemThisTest < Test::Unit::TestCase
     should "put lib in require path" do
       assert_gem_spec :require_paths, ["lib"]
     end
+
+    should "not create a static spec file by default" do
+      assert !static_gemspec_exists?
+    end
+  end
+
+  context "when building a gem with the -spec option" do
+    setup do
+      build_gem('test_gem', :spec => true) do
+        lib %w(thing.rb)
+      end
+    end
+
+    should "not create a static spec file by default" do
+      assert static_gemspec_exists?
+    end
   end
 
   context "When building a gem with specs" do
