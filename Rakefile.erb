@@ -3,8 +3,6 @@ require "rake/gempackagetask"
 require "rake/rdoctask"
 
 <% if using_rspec? %>
-task :default => :spec
-
 require "spec"
 require "spec/rake/spectask"
 Spec::Rake::SpecTask.new do |t|
@@ -12,18 +10,28 @@ Spec::Rake::SpecTask.new do |t|
   t.libs = ["spec"]
 end
 <% elsif using_test_unit? %>
-task :default => :test
-
 require "rake/testtask"
 Rake::TestTask.new do |t|
   t.libs << "test"
   t.test_files = FileList["test/**/*_test.rb"]
   t.verbose = true
 end
-<% else %>
+<% end %>
+
+<% if using_cucumber? %>
+require 'cucumber'
+require 'cucumber/rake/task'
+Cucumber::Rake::Task.new('features') do |t|
+  t.cucumber_opts = %w{--format pretty}
+end
+<% end %>
+
+<% if default_tasks.empty? %>
 task :default => :package do
   puts "Don't forget to write some tests!"
 end
+<% else %>
+task :default => <%= default_tasks.inspect %>
 <% end %>
 
 # This builds the actual gem. For details of what all these options
@@ -32,14 +40,14 @@ end
 #   http://rubygems.org/read/chapter/20
 #
 spec = Gem::Specification.new do |s|
-  
+
   # Change these as appropriate
-  s.name              = "<%= gem_name %>"
+  s.name              = "<%= name %>"
   s.version           = "0.1.0"
   s.summary           = "What this thing does"
-  s.author            = "Your name"
-  s.email             = "you@example.com"
-  s.homepage          = "http://example.com"
+  s.author            = "<%= author_name %>"
+  s.email             = "<%= author_email %>"
+  s.homepage          = "<%= author_url %>"
 
   s.has_rdoc          = true
 <% if readme %>
@@ -47,7 +55,7 @@ spec = Gem::Specification.new do |s|
   s.rdoc_options      = %w(--main <%= readme %>)
 
   # Add any extra files to include in the gem
-<% else %>  
+<% else %>
   # You should probably have a README of some kind. Change the filename
   # as appropriate
   # s.extra_rdoc_files  = %w(README)
@@ -55,35 +63,47 @@ spec = Gem::Specification.new do |s|
 
   # Add any extra files to include in the gem (like your README)
 <% end %>
-  s.files             = %w(<%= files_in_root %>) + Dir.glob("{<%= dirs_to_include %>}/**/*")
+  s.files             = %w(<%= files_in_root %>) + Dir.glob("{<%= dirs_to_include_glob %>}")
 <% if has_executables? %>
   s.executables       = FileList["bin/**"].map { |f| File.basename(f) }
-<% end %>   
+<% end %>
+<% if has_lib_directory? %>
   s.require_paths     = ["lib"]
-  
+<% else %>
+
+  # You need to put your code in a directory which can then be added to
+  # the $LOAD_PATH by rubygems. Typically this is lib, but you don't seem
+  # to have that directory. You'll need to set the line below to whatever
+  # directory your code is in. Rubygems is going to assume lib if you leave
+  # this blank.
+  #
+  # s.require_paths = ["lib"]
+<% end %>
+
   # If you want to depend on other gems, add them here, along with any
   # relevant versions
   # s.add_dependency("some_other_gem", "~> 0.1.0")
-  
-<% if using_rspec? %>
-  s.add_development_dependency("rspec") # add any other gems for testing/development
-<% else %>
-  # If your tests use any gems, include them here
-  # s.add_development_dependency("mocha")
-<% end %>
 
-  # If you want to publish automatically to rubyforge, you'll may need
-  # to tweak this, and the publishing task below too.
-  s.rubyforge_project = "<%= gem_name %>"
+  # If your tests use any gems, include them here
+<% if development_dependencies.any? %>
+<% development_dependencies.each do |dependency| %>
+  s.add_development_dependency("<%= dependency %>")
+<% end %>
+<% else %>
+  # s.add_development_dependency("mocha") # for example
+<% end %>
 end
 
-# This task actually builds the gem. We also regenerate a static 
+# This task actually builds the gem. We also regenerate a static
 # .gemspec file, which is useful if something (i.e. GitHub) will
 # be automatically building a gem for this project. If you're not
 # using GitHub, edit as appropriate.
+#
+# To publish your gem online, install the 'gemcutter' gem; Read more 
+# about that here: http://gemcutter.org/pages/gem_docs
 Rake::GemPackageTask.new(spec) do |pkg|
   pkg.gem_spec = spec
-  
+
   # Generate the gemspec file for github.
   file = File.dirname(__FILE__) + "/#{spec.name}.gemspec"
   File.open(file, "w") {|f| f << spec.to_ruby }
@@ -99,32 +119,4 @@ end
 desc 'Clear out RDoc and generated packages'
 task :clean => [:clobber_rdoc, :clobber_package] do
   rm "#{spec.name}.gemspec"
-end
-
-# If you want to publish to RubyForge automatically, here's a simple 
-# task to help do that. If you don't, just get rid of this.
-begin
-  require "rake/contrib/sshpublisher"
-  namespace :rubyforge do
-    
-    desc "Release gem and RDoc documentation to RubyForge"
-    task :release => ["rubyforge:release:gem", "rubyforge:release:docs"]
-    
-    namespace :release do
-      desc "Publish RDoc to RubyForge."
-      task :docs => [:rdoc] do
-        config = YAML.load(
-            File.read(File.expand_path('~/.rubyforge/user-config.yml'))
-        )
- 
-        host = "#{config['username']}@rubyforge.org"
-        remote_dir = "/var/www/gforge-projects/<%= gem_name %>/" # Should be the same as the rubyforge project name
-        local_dir = 'rdoc'
- 
-        Rake::SshDirPublisher.new(host, remote_dir, local_dir).upload
-      end
-    end
-  end
-rescue LoadError
-  puts "Rake SshDirPublisher is unavailable or your rubyforge environment is not configured."
 end
